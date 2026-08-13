@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+python-dotenv
+alembic==1.19.1
+pytest
+httpx
+openai

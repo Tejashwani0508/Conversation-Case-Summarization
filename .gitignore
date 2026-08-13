@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.*
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+
+# Coverage
+coverage/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
