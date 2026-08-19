@@ -399,66 +399,57 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
           </section>
         </div>
 
-        {/* ─── AI Analysis ───────────────────────────────────────────────── */}
-        <section className="mt-6 rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <svg
-                className="h-5 w-5 text-blue-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                aria-hidden="true"
+        {/* ─── AI Case Analysis ─────────────────────────────────────────── */}
+        <section className="mt-6 overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm">
+          {/* AI Analysis header */}
+          <div className="border-b border-blue-100 bg-blue-50/40 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                  <SparklesIcon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">AI Case Analysis</h2>
+                  <p className="text-sm text-slate-500">
+                    AI-powered insights generated from the customer conversation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleGenerateSummary}
+                disabled={generating}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"
-                />
-              </svg>
-              <h2 className="text-lg font-semibold text-slate-900">AI Analysis</h2>
+                <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+                {generating ? 'Generating Analysis...' : 'Generate Summary'}
+              </button>
             </div>
-            <button
-              onClick={handleGenerateSummary}
-              disabled={generating}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {generating ? 'Generating AI summary...' : 'Generate Summary'}
-            </button>
           </div>
 
-          {aiSuccess && (
-            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-              AI summary generated successfully.
-            </div>
-          )}
-          {aiError && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-              {aiError}
-            </div>
-          )}
+          <div className="p-6">
+            {aiSuccess && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                <CheckCircleIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                AI analysis generated successfully.
+              </div>
+            )}
 
-          {/* Current analysis */}
-          {generating ? (
-            <div className="animate-pulse rounded-xl border border-slate-200 bg-slate-50 p-10 text-center text-sm text-slate-500">
-              Generating AI summary... This may take a moment.
-            </div>
-          ) : loadingAnalysis ? (
-            <div className="animate-pulse rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-              Loading AI analysis...
-            </div>
-          ) : currentAnalysis ? (
-            <AnalysisDisplay
-              analysis={currentAnalysis}
-              analysisHistory={analysisHistory}
-              runHistory={runHistory}
-            />
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
-              {`No AI analysis has been generated for this case yet. Click "Generate Summary" to create one.`}
-            </div>
-          )}
+            {generating ? (
+              <AIGeneratingSkeleton />
+            ) : loadingAnalysis ? (
+              <AIGeneratingSkeleton />
+            ) : aiError ? (
+              <AIErrorState onRetry={handleGenerateSummary} retrying={generating} />
+            ) : currentAnalysis ? (
+              <AnalysisDisplay
+                analysis={currentAnalysis}
+                analysisHistory={analysisHistory}
+                runHistory={runHistory}
+              />
+            ) : (
+              <AIEmptyState onGenerate={handleGenerateSummary} generating={generating} />
+            )}
+          </div>
         </section>
 
         {/* ─── Conversation History ─────────────────────────────────────── */}
@@ -593,6 +584,160 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
   );
 }
 
+// ─── AI Empty State ─────────────────────────────────────────────────────────
+
+function AIEmptyState({
+  onGenerate,
+  generating,
+}: {
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-blue-100 bg-blue-50/30 px-6 py-12 text-center">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+        <SparklesIcon className="h-8 w-8" aria-hidden="true" />
+      </div>
+      <h3 className="text-lg font-semibold text-slate-900">Generate an AI-powered case summary</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
+        {`Analyze the conversation to identify the customer's issue, sentiment, priority, key details, and recommended next actions.`}
+      </p>
+      <div className="mt-6 flex flex-col items-center gap-4">
+        <button
+          onClick={onGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+          {generating ? 'Generating Analysis...' : 'Generate AI Summary'}
+        </button>
+        <p className="flex items-center gap-1.5 text-xs text-slate-400">
+          <SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          Powered by conversation intelligence
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── AI Error State ─────────────────────────────────────────────────────────
+
+function AIErrorState({
+  onRetry,
+  retrying,
+}: {
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-red-100 bg-red-50/50 px-6 py-8 text-center">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+          />
+        </svg>
+      </div>
+      <h3 className="text-base font-semibold text-slate-900">AI analysis could not be generated</h3>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-slate-600">
+        Something went wrong while generating the AI analysis. Please try again.
+      </p>
+      <button
+        onClick={onRetry}
+        disabled={retrying}
+        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+          />
+        </svg>
+        {retrying ? 'Retrying...' : 'Try Again'}
+      </button>
+    </div>
+  );
+}
+
+// ─── AI Generating Skeleton ─────────────────────────────────────────────────
+
+function AIGeneratingSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/40 px-4 py-3">
+        <svg
+          className="h-4 w-4 animate-spin text-blue-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 0 1 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+        <p className="text-sm font-medium text-blue-700">Generating insights from conversation...</p>
+      </div>
+
+      <div className="animate-pulse space-y-4">
+        {/* Summary skeleton */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div className="mb-3 h-3 w-32 rounded bg-slate-200" />
+          <div className="space-y-2">
+            <div className="h-3 w-full rounded bg-slate-200" />
+            <div className="h-3 w-11/12 rounded bg-slate-200" />
+            <div className="h-3 w-4/5 rounded bg-slate-200" />
+          </div>
+        </div>
+
+        {/* Classification skeleton */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <div className="mb-3 h-3 w-28 rounded bg-slate-200" />
+            <div className="flex flex-wrap gap-2">
+              <div className="h-6 w-20 rounded-full bg-slate-200" />
+              <div className="h-6 w-24 rounded-full bg-slate-200" />
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <div className="mb-3 h-3 w-28 rounded bg-slate-200" />
+            <div className="h-3 w-2/3 rounded bg-slate-200" />
+          </div>
+        </div>
+
+        {/* Key Details skeleton */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <div className="mb-3 h-3 w-24 rounded bg-slate-200" />
+          <div className="space-y-2">
+            <div className="h-3 w-full rounded bg-slate-100" />
+            <div className="h-3 w-10/12 rounded bg-slate-100" />
+            <div className="h-3 w-8/12 rounded bg-slate-100" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── AI Analysis Display ────────────────────────────────────────────────────
 
 function AnalysisDisplay({
@@ -604,67 +749,185 @@ function AnalysisDisplay({
   analysisHistory: AIAnalysis[];
   runHistory: AIAnalysisRun[];
 }) {
+  const formatDateTime = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
   return (
     <div className="space-y-6">
-      {/* Classification badges */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${aiPriorityBadgeClass(analysis.ai_priority)}`}>
-          {analysis.ai_priority} priority
-        </span>
-        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${sentimentBadgeClass(analysis.sentiment)}`}>
-          {analysis.sentiment}
-        </span>
-        <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-          {analysis.category}
-        </span>
-        {analysis.sentiment_score !== null && analysis.sentiment_score !== undefined && (
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-            Score: {analysis.sentiment_score.toFixed(2)}
-          </span>
+      {/* A. Executive Summary */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-5">
+        <div className="mb-2 flex items-center gap-2">
+          <SparklesIcon className="h-4 w-4 text-blue-600" aria-hidden="true" />
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-700">
+            Executive Summary
+          </h3>
+        </div>
+        <p className="text-sm leading-6 text-slate-700">{analysis.summary}</p>
+      </div>
+
+      {/* B. Case Classification + C. Sentiment & Confidence */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Case Classification
+          </h3>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-medium text-slate-400">Issue</p>
+              <p className="mt-0.5 text-sm text-slate-700">{analysis.issue}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400">Category</p>
+              <div className="mt-1">
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                  {analysis.category}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs font-medium text-slate-400">Priority</p>
+                <div className="mt-1">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${aiPriorityBadgeClass(analysis.ai_priority)}`}>
+                    {analysis.ai_priority}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400">Sentiment</p>
+                <div className="mt-1">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${sentimentBadgeClass(analysis.sentiment)}`}>
+                    {analysis.sentiment}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Sentiment & Confidence
+          </h3>
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${sentimentBadgeClass(analysis.sentiment)}`}>
+              {analysis.sentiment}
+            </span>
+            {analysis.sentiment_score !== null && analysis.sentiment_score !== undefined && (
+              <div className="flex-1">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs text-slate-400">AI confidence</span>
+                  <span className="text-xs font-medium text-slate-600">
+                    {(analysis.sentiment_score * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-blue-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, analysis.sentiment_score * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          {analysis.sentiment_score === null || analysis.sentiment_score === undefined ? (
+            <p className="mt-2 text-xs text-slate-400">No confidence score available for this analysis.</p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* D. Key Details */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Key Details
+        </h3>
+        {analysis.key_details.length === 0 ? (
+          <p className="text-sm text-slate-400">No key details identified.</p>
+        ) : (
+          <ul className="space-y-2">
+            {analysis.key_details.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
+                {item}
+              </li>
+            ))}
+          </ul>
         )}
-        <span className="text-xs text-slate-400">
-          {new Date(analysis.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-        </span>
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600">Summary</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-700">{analysis.summary}</p>
+      {/* E. Recommended Action + F. Pending Actions */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-5">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-blue-700">
+            Recommended Action
+          </h3>
+          <p className="text-sm leading-6 text-slate-700">
+            {analysis.recommended_action ?? 'No recommendation available.'}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Pending Actions
+          </h3>
+          {analysis.pending_actions.length === 0 ? (
+            <p className="text-sm text-slate-400">No pending actions identified.</p>
+          ) : (
+            <ul className="space-y-2">
+              {analysis.pending_actions.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600">Issue</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-700">{analysis.issue}</p>
-      </div>
+      {/* Actions Taken */}
+      {analysis.actions_taken.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Actions Taken
+          </h3>
+          <ul className="space-y-2">
+            {analysis.actions_taken.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+                <CheckCircleIcon className="mt-1 h-3.5 w-3.5 shrink-0 text-emerald-500" aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <ListBlock title="Key Details" items={analysis.key_details} emptyText="No key details identified." />
-        <ListBlock title="Actions Taken" items={analysis.actions_taken} emptyText="No actions recorded." />
-      </div>
-
-      <ListBlock title="Pending Actions" items={analysis.pending_actions} emptyText="No pending actions identified." />
-
-      <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600">Recommended Action</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-700">
-          {analysis.recommended_action ?? 'No recommendation available.'}
-        </p>
-      </div>
-
-      <div className="border-t border-slate-100 pt-3 text-xs text-slate-400">
-        {analysis.model_name && <span>Model: {analysis.model_name}</span>}
-        {analysis.model_name && analysis.prompt_version && <span> · </span>}
-        {analysis.prompt_version && <span>Prompt: {analysis.prompt_version}</span>}
-      </div>
+      {/* G. AI Metadata */}
+      {(analysis.model_name || analysis.prompt_version) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-400">
+          {analysis.model_name && <span>Model: {analysis.model_name}</span>}
+          {analysis.model_name && analysis.prompt_version && <span>·</span>}
+          {analysis.prompt_version && <span>Prompt: {analysis.prompt_version}</span>}
+          <span className="text-slate-300">·</span>
+          <span>Analyzed: {formatDateTime(analysis.created_at)}</span>
+        </div>
+      )}
 
       {/* Analysis History */}
       <div className="border-t border-slate-100 pt-4">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-blue-600">Analysis History</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Analysis History
+        </h3>
         <div className="space-y-2">
           {analysisHistory.map((a) => (
             <div key={a.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-slate-600">{new Date(a.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                <span className="text-slate-600">{formatDateTime(a.created_at)}</span>
                 <div className="flex flex-wrap gap-1">
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${aiPriorityBadgeClass(a.ai_priority)}`}>{a.ai_priority}</span>
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${sentimentBadgeClass(a.sentiment)}`}>{a.sentiment}</span>
@@ -679,7 +942,9 @@ function AnalysisDisplay({
 
       {/* AI Run History */}
       <div className="border-t border-slate-100 pt-4">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-blue-600">AI Processing History</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          AI Processing History
+        </h3>
         <div className="space-y-2">
           {runHistory.length === 0 ? (
             <p className="text-xs text-slate-400">No AI processing history.</p>
@@ -687,7 +952,7 @@ function AnalysisDisplay({
             runHistory.map((r) => (
               <div key={r.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-slate-600">{new Date(r.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span className="text-slate-600">{formatDateTime(r.created_at)}</span>
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${runStatusBadgeClass(r.status)}`}>{r.status}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-slate-500">
@@ -709,20 +974,43 @@ function AnalysisDisplay({
   );
 }
 
-function ListBlock({ title, items, emptyText }: { title: string; items: string[]; emptyText: string }) {
+// ─── Icons ──────────────────────────────────────────────────────────────────
+
+function SparklesIcon({ className }: { className?: string }) {
   return (
-    <div>
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600">{title}</h3>
-      {items.length === 0 ? (
-        <p className="mt-1 text-sm text-slate-400">{emptyText}</p>
-      ) : (
-        <ul className="mt-1 list-disc pl-5 text-sm leading-6 text-slate-700">
-          {items.map((item, idx) => (
-            <li key={idx}>{item}</li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"
+      />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+      />
+    </svg>
   );
 }
 
