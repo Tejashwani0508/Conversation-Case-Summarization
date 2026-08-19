@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Conversation & Case Summarization',
-  description: 'AI-powered customer service case summarization application.',
+  title: 'Conversation Intelligence',
+  description: 'AI-powered customer service intelligence and case summarization.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

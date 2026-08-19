@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.cases import router as cases_router
 from app.api.conversations import router as conversations_router
@@ -9,6 +10,15 @@ app = FastAPI(
     title="Conversation & Case Summarization API",
     description="Backend API for the Conversation & Case Summarization application.",
     version="0.1.0",
+)
+
+# CORS: allow the Next.js frontend (http://localhost:3000) to call this API.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

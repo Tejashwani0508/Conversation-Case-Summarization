@@ -75,21 +75,65 @@ export default function CasesPage() {
   const formatDate = (iso: string) => new Date(iso).toLocaleDateString();
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="mx-auto max-w-6xl p-6 lg:p-8">
-        <header className="mb-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-semibold">Cases</h1>
+    <main className="min-h-screen bg-slate-50">
+      {/* Top navigation */}
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Conversation Intelligence</p>
+              <p className="text-xs text-slate-500">AI-powered customer service intelligence</p>
+            </div>
+          </div>
+          <nav className="flex items-center gap-1">
             <Link
               href="/"
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-900"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
             >
-              ← Home
+              Dashboard
+            </Link>
+            <Link
+              href="/cases"
+              className="rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700"
+            >
+              Cases
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Cases</h1>
+              <p className="mt-2 text-sm text-slate-500">
+                {total} case{total !== 1 ? 's' : ''} found
+              </p>
+            </div>
+            <Link
+              href="/"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              ← Dashboard
             </Link>
           </div>
-          <p className="mt-2 text-sm text-slate-400">
-            {total} case{total !== 1 ? 's' : ''} found
-          </p>
         </header>
 
         {/* Filters */}
@@ -99,12 +143,12 @@ export default function CasesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search case number, subject, description..."
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s || 'all'} value={s}>{s ? `Status: ${s}` : 'All Statuses'}</option>
@@ -113,7 +157,7 @@ export default function CasesPage() {
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {PRIORITY_OPTIONS.map((p) => (
               <option key={p || 'all'} value={p}>{p ? `Priority: ${p}` : 'All Priorities'}</option>
@@ -122,7 +166,7 @@ export default function CasesPage() {
           <select
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {PAGE_SIZE_OPTIONS.map((n) => (
               <option key={n} value={n}>{n} per page</option>
@@ -132,60 +176,76 @@ export default function CasesPage() {
 
         {/* Error state */}
         {error && (
-          <div className="mb-6 rounded-lg border border-red-800 bg-red-950/60 p-4 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {/* Loading state */}
         {loading ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-10 text-center text-slate-400">
-            Loading cases...
+          <div className="animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="space-y-0">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-4 border-b border-slate-100 px-4 py-3">
+                  <div className="h-3 w-24 rounded bg-slate-100" />
+                  <div className="h-3 w-40 rounded bg-slate-200" />
+                  <div className="h-3 w-24 rounded bg-slate-100" />
+                  <div className="h-3 w-20 rounded bg-slate-100" />
+                  <div className="h-5 w-16 rounded-full bg-slate-200" />
+                  <div className="h-5 w-20 rounded-full bg-slate-200" />
+                  <div className="h-3 w-20 rounded bg-slate-100" />
+                  <div className="h-7 w-20 rounded-lg bg-slate-200" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : cases.length === 0 ? (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-10 text-center text-slate-400">
-            No cases found.
+          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+            <p className="font-medium text-slate-900">No cases found</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Try adjusting your search or filters.
+            </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-800">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-900 text-xs uppercase tracking-wider text-slate-400">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-4 py-3">Case Number</th>
-                    <th className="px-4 py-3">Subject</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Priority</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3 font-semibold">Case Number</th>
+                    <th className="px-4 py-3 font-semibold">Subject</th>
+                    <th className="px-4 py-3 font-semibold">Customer</th>
+                    <th className="px-4 py-3 font-semibold">Category</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Priority</th>
+                    <th className="px-4 py-3 font-semibold">Created</th>
+                    <th className="px-4 py-3 font-semibold">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 bg-slate-950">
+                <tbody className="divide-y divide-slate-100">
                   {cases.map((c) => (
-                    <tr key={c.id} className="transition hover:bg-slate-900/60">
-                      <td className="px-4 py-3 font-mono text-xs text-blue-400">{c.case_number}</td>
-                      <td className="px-4 py-3 font-medium">{c.subject}</td>
-                      <td className="px-4 py-3 text-slate-300">
+                    <tr key={c.id} className="transition hover:bg-slate-50">
+                      <td className="px-4 py-3 font-mono text-xs font-medium text-blue-600">{c.case_number}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{c.subject}</td>
+                      <td className="px-4 py-3 text-slate-600">
                         {customers[c.customer_id]?.name ?? c.customer_id}
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{c.category}</td>
+                      <td className="px-4 py-3 text-slate-600">{c.category}</td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge(c.status)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadge(c.status)}`}>
                           {c.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priorityBadge(c.priority)}`}>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${priorityBadge(c.priority)}`}>
                           {c.priority}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-400">{formatDate(c.created_at)}</td>
+                      <td className="px-4 py-3 text-slate-500">{formatDate(c.created_at)}</td>
                       <td className="px-4 py-3">
                         <Link
                           href={`/cases/${c.id}`}
-                          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                         >
                           View Case
                         </Link>
@@ -204,17 +264,17 @@ export default function CasesPage() {
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ← Prev
             </button>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-slate-500">
               Page {page} of {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next →
             </button>
@@ -227,20 +287,20 @@ export default function CasesPage() {
 
 function statusBadge(status: string) {
   switch (status) {
-    case CaseStatus.OPEN: return 'bg-green-900/60 text-green-300';
-    case CaseStatus.IN_PROGRESS: return 'bg-amber-900/60 text-amber-300';
-    case CaseStatus.RESOLVED: return 'bg-emerald-900/60 text-emerald-300';
-    case CaseStatus.CLOSED: return 'bg-slate-800 text-slate-300';
-    default: return 'bg-slate-800 text-slate-300';
+    case CaseStatus.OPEN: return 'bg-emerald-50 text-emerald-700';
+    case CaseStatus.IN_PROGRESS: return 'bg-amber-50 text-amber-700';
+    case CaseStatus.RESOLVED: return 'bg-blue-50 text-blue-700';
+    case CaseStatus.CLOSED: return 'bg-slate-100 text-slate-600';
+    default: return 'bg-slate-100 text-slate-600';
   }
 }
 
 function priorityBadge(priority: string) {
   switch (priority) {
-    case CasePriority.LOW: return 'bg-slate-800 text-slate-300';
-    case CasePriority.MEDIUM: return 'bg-blue-900/60 text-blue-300';
-    case CasePriority.HIGH: return 'bg-amber-900/60 text-amber-300';
-    case CasePriority.CRITICAL: return 'bg-red-900/60 text-red-300';
-    default: return 'bg-slate-800 text-slate-300';
+    case CasePriority.LOW: return 'bg-emerald-50 text-emerald-700';
+    case CasePriority.MEDIUM: return 'bg-amber-50 text-amber-700';
+    case CasePriority.HIGH: return 'bg-orange-50 text-orange-700';
+    case CasePriority.CRITICAL: return 'bg-red-50 text-red-700';
+    default: return 'bg-slate-100 text-slate-600';
   }
 }
