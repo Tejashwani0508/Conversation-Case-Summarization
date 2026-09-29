@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -7,7 +8,7 @@ from app.config.settings import settings
 from app.repositories.ai_analysis_repository import AIAnalysisRepository
 from app.repositories.case_repository import CaseRepository
 from app.services.conversation_service import ConversationService
-from app.services.ai_provider import AIProvider, get_provider
+from app.services.ai_provider import AIProvider, OpenRouterProvider, get_provider
 from app.models.ai_analysis import AIAnalysis
 from app.models.ai_run import AIAnalysisRun
 from app.models.enums import AIAnalysisRunStatus
@@ -22,7 +23,13 @@ class SummarizationService:
         self.case_repo = CaseRepository(db)
         self.conv_service = ConversationService(db)
         self.ai_repo = AIAnalysisRepository(db)
-        self.provider = provider or get_provider()
+        try:
+            self.provider = provider or get_provider()
+        except ValueError:
+            self.provider = OpenRouterProvider(
+                api_key="",
+                model=settings.openrouter_model or "openrouter/free",
+            )
 
     def summarize_case(self, case_id: UUID) -> AIAnalysis:
         """Summarize a case by fetching conversation history, calling the AI provider,
@@ -63,6 +70,10 @@ class SummarizationService:
 
         # 6. Call the AI provider
         try:
+            if self.provider.requires_key:
+                raise ValueError("OpenRouter API key is not configured.")
+            if not self.provider.model:
+                raise ValueError("OpenRouter model is not configured.")
             output: AISummaryOutput = self.provider.summarize_conversation(conversation_lines)
         except Exception as exc:
             # AI failure handling
@@ -73,14 +84,18 @@ class SummarizationService:
             self.db.rollback()
 
             # Create a FAILED AIAnalysisRun
+            error_message = str(exc) if str(exc) else "OpenRouter provider failed"
+            if self.provider.api_key:
+                error_message = error_message.replace(self.provider.api_key, "[REDACTED]")
+
             run = AIAnalysisRun(
                 case_id=case_id,
-                model_name=settings.openai_model or None,
+                model_name=settings.openrouter_model or None,
                 prompt_version=getattr(self.provider, "model", None) or "v1",
                 input_message_count=len(conversations),
                 processing_time_ms=processing_time_ms,
                 status=AIAnalysisRunStatus.FAILED,
-                error_message=str(exc) if str(exc) else "AI provider failed",
+                error_message=error_message,
             )
             try:
                 self.ai_repo.create_run(run)
@@ -99,7 +114,7 @@ class SummarizationService:
         processing_time_ms = max(0, processing_time_ms)
 
         # 7. Create AIAnalysis
-        model_name = settings.openai_model or getattr(self.provider, "model", None) or "unknown"
+        model_name = settings.openrouter_model or getattr(self.provider, "model", None) or "unknown"
 
         analysis = AIAnalysis(
             case_id=case_id,
