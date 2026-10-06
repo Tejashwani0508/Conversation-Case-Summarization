@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.models.ai_run import AIAnalysisRun
     from app.models.conversation import Conversation
     from app.models.customer import Customer
+    from app.models.email_notification import EmailNotification
 
 
 class CustomerCase(UUIDMixin, TimestampMixin, Base):
@@ -66,4 +67,9 @@ class CustomerCase(UUIDMixin, TimestampMixin, Base):
         back_populates="case",
         cascade="save-update, merge",
         order_by="AIAnalysisRun.created_at",
+    )
+    email_notifications: Mapped[list["EmailNotification"]] = relationship(
+        back_populates="case",
+        cascade="save-update, merge",
+        order_by="EmailNotification.created_at.desc()",
     )

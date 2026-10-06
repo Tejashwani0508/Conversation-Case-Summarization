@@ -11,6 +11,7 @@ from app.models.enums import CaseCategory, CasePriority, Sentiment
 
 if TYPE_CHECKING:
     from app.models.case import CustomerCase
+    from app.models.email_notification import EmailNotification
 
 
 class AIAnalysis(UUIDMixin, Base):
@@ -58,3 +59,8 @@ class AIAnalysis(UUIDMixin, Base):
     )
 
     case: Mapped["CustomerCase"] = relationship(back_populates="ai_analyses")
+    email_notifications: Mapped[list["EmailNotification"]] = relationship(
+        back_populates="ai_analysis",
+        cascade="save-update, merge",
+        order_by="EmailNotification.created_at.desc()",
+    )

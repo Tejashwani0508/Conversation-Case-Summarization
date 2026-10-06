@@ -11,7 +11,14 @@ from app.schemas.case import (
     CaseResponse,
     CaseUpdate,
 )
+from app.schemas.email_notification import (
+    EmailNotificationListResponse,
+    EmailNotificationResponse,
+    EmailSendRequest,
+    EmailSendResponse,
+)
 from app.services.case_service import CaseService
+from app.services.email_service import EmailNotificationService
 
 router = APIRouter(prefix="/api/cases", tags=["Case Management"])
 
@@ -172,3 +179,58 @@ def delete_case(
     service = CaseService(db)
     service.delete_case(case_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{case_id}/ai-summary/email",
+    response_model=EmailSendResponse,
+    summary="Send the latest AI summary email",
+    description="Send the latest AI-generated summary for a case to the supplied recipient(s).",
+    responses={
+        200: {"description": "AI summary email sent successfully"},
+        404: {"description": "Case or AI summary not found"},
+        422: {"description": "Validation error"},
+        502: {"description": "Email provider failed"},
+        503: {"description": "Email provider not configured"},
+    },
+)
+def send_case_summary_email(
+    case_id: uuid.UUID,
+    payload: EmailSendRequest,
+    db: Session = Depends(get_db),
+) -> EmailSendResponse:
+    service = EmailNotificationService(db)
+    return service.send_summary_email(case_id, payload, sent_by="user")
+
+
+@router.get(
+    "/{case_id}/email-history",
+    response_model=EmailNotificationListResponse,
+    summary="Get email activity for a case",
+    description="Return a paginated activity log of email notifications for the case.",
+    responses={
+        200: {"description": "Email history returned successfully"},
+        404: {"description": "Case not found"},
+    },
+)
+def get_case_email_history(
+    case_id: uuid.UUID,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(
+        20,
+        ge=1,
+        le=100,
+        description="Number of items per page",
+    ),
+    db: Session = Depends(get_db),
+) -> EmailNotificationListResponse:
+    service = EmailNotificationService(db)
+    items, total = service.list_history_for_case(case_id, page=page, page_size=page_size)
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    return EmailNotificationListResponse(
+        items=[EmailNotificationResponse.model_validate(item) for item in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )

@@ -58,9 +58,9 @@ def client(db_session):
 @pytest.fixture()
 def clean_tables(db_session):
     """Delete all rows from tables before each test to ensure isolation."""
-    from app.models import AIAnalysis, AIAnalysisRun, Conversation, Customer, CustomerCase
+    from app.models import AIAnalysis, AIAnalysisRun, Conversation, Customer, CustomerCase, EmailNotification
 
-    for model in (AIAnalysisRun, AIAnalysis, Conversation, CustomerCase, Customer):
+    for model in (EmailNotification, AIAnalysisRun, AIAnalysis, Conversation, CustomerCase, Customer):
         db_session.query(model).delete()
     db_session.commit()
     yield

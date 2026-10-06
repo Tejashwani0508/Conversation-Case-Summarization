@@ -50,3 +50,9 @@ class Sentiment(enum.Enum):
 class AIAnalysisRunStatus(enum.Enum):
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
+
+
+class EmailStatus(enum.Enum):
+    PENDING = "PENDING"
+    SENT = "SENT"
+    FAILED = "FAILED"

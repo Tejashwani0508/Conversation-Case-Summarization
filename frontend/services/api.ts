@@ -6,6 +6,11 @@ import type {
   ConversationCreate,
   ConversationListResponse,
 } from '../types/conversation-types';
+import type {
+  EmailHistoryResponse,
+  SendEmailSummaryRequest,
+  SendEmailSummaryResponse,
+} from '../types/email-types';
 
 // Environment-driven backend URL. Never store OpenAI credentials on the frontend.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -159,4 +164,18 @@ export async function getAIAnalysisRuns(caseId: string, params: { page?: number;
   if (params.page_size !== undefined) query.set('page_size', String(params.page_size));
   const qs = query.toString();
   return request<AIRunListResponse>(`/api/cases/${caseId}/analysis/runs${qs ? `?${qs}` : ''}`);
+}
+
+export async function sendCaseSummaryEmail(
+  caseId: string,
+  payload: SendEmailSummaryRequest,
+): Promise<SendEmailSummaryResponse> {
+  return request<SendEmailSummaryResponse>(`/api/cases/${caseId}/ai-summary/email`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCaseEmailHistory(caseId: string): Promise<EmailHistoryResponse> {
+  return request<EmailHistoryResponse>(`/api/cases/${caseId}/email-history`);
 }

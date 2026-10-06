@@ -11,12 +11,16 @@ import {
   generateCaseSummary,
   getCaseAnalyses,
   getAIAnalysisRuns,
+  getCaseEmailHistory,
+  sendCaseSummaryEmail,
   ApiError,
 } from '../../../services/api';
 import type { Case } from '../../../types/case-types';
 import type { Customer } from '../../../types/customer-types';
 import type { Conversation } from '../../../types/conversation-types';
 import type { AIAnalysis, AIAnalysisRun } from '../../../types/ai-types';
+import type { EmailNotification } from '../../../types/email-types';
+import { EmailStatus } from '../../../types/email-types';
 import {
   CaseCategory,
   CasePriority,
@@ -56,6 +60,19 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
   const [generating, setGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSuccess, setAiSuccess] = useState(false);
+
+  // Email summary state
+  const [emailHistory, setEmailHistory] = useState<EmailNotification[]>([]);
+  const [loadingEmailHistory, setLoadingEmailHistory] = useState(true);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailForm, setEmailForm] = useState({
+    to_email: '',
+    cc_emails: '',
+    subject: '',
+  });
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [emailSubmitMessage, setEmailSubmitMessage] = useState<string | null>(null);
+  const [emailSubmitError, setEmailSubmitError] = useState<string | null>(null);
 
   // Add conversation form state
   const [senderType, setSenderType] = useState<SenderType>(SenderType.CUSTOMER);
@@ -138,11 +155,24 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
     }
   }, [caseId]);
 
+  const loadEmailHistory = useCallback(async () => {
+    setLoadingEmailHistory(true);
+    try {
+      const data = await getCaseEmailHistory(caseId);
+      setEmailHistory(data.items);
+    } catch {
+      setEmailHistory([]);
+    } finally {
+      setLoadingEmailHistory(false);
+    }
+  }, [caseId]);
+
   useEffect(() => {
     void loadCase();
     void loadConversations();
     void loadAI();
-  }, [loadCase, loadConversations, loadAI]);
+    void loadEmailHistory();
+  }, [loadCase, loadConversations, loadAI, loadEmailHistory]);
 
   const handleGenerateSummary = async () => {
     if (generating) return;
@@ -174,6 +204,64 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
       }
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleOpenEmailModal = () => {
+    if (!currentAnalysis || !caseData) return;
+    setEmailSubmitMessage(null);
+    setEmailSubmitError(null);
+    setEmailForm({
+      to_email: customer?.email ?? '',
+      cc_emails: '',
+      subject: `AI Case Summary — ${caseData.case_number}`,
+    });
+    setEmailModalOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!currentAnalysis || !caseData) return;
+    const toEmail = emailForm.to_email.trim();
+    const ccEmails = emailForm.cc_emails
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    if (!toEmail || !isValidEmail(toEmail)) {
+      setEmailSubmitError('Please enter a valid recipient email address.');
+      return;
+    }
+
+    const invalidCC = ccEmails.find((value) => !isValidEmail(value));
+    if (invalidCC) {
+      setEmailSubmitError(`Invalid CC email: ${invalidCC}`);
+      return;
+    }
+
+    setEmailSubmitting(true);
+    setEmailSubmitError(null);
+    setEmailSubmitMessage(null);
+
+    try {
+      await sendCaseSummaryEmail(caseId, {
+        to_email: toEmail,
+        cc_emails: ccEmails,
+        subject: emailForm.subject.trim() || `AI Case Summary — ${caseData.case_number}`,
+      });
+      setEmailSubmitMessage('Email sent successfully.');
+      await loadEmailHistory();
+      setTimeout(() => {
+        setEmailModalOpen(false);
+        setEmailSubmitMessage(null);
+      }, 1200);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setEmailSubmitError(err.message || 'Unable to send the email. Please try again.');
+      } else {
+        setEmailSubmitError('Unable to send the email. Please try again.');
+      }
+    } finally {
+      setEmailSubmitting(false);
     }
   };
 
@@ -415,14 +503,27 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleGenerateSummary}
-                disabled={generating}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <SparklesIcon className="h-4 w-4" aria-hidden="true" />
-                {generating ? 'Generating Analysis...' : 'Generate Summary'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {currentAnalysis && (
+                  <button
+                    onClick={handleOpenEmailModal}
+                    className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700 shadow-sm transition hover:bg-blue-50"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.25A2.25 2.25 0 0 1 5.25 6h13.5A2.25 2.25 0 0 1 21 8.25v7.5A2.25 2.25 0 0 1 18.75 18H5.25A2.25 2.25 0 0 1 3 15.75v-7.5Zm0 0 9 6 9-6" />
+                    </svg>
+                    Send AI Summary
+                  </button>
+                )}
+                <button
+                  onClick={handleGenerateSummary}
+                  disabled={generating}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+                  {generating ? 'Generating Analysis...' : 'Generate Summary'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -450,6 +551,35 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
               <AIEmptyState onGenerate={handleGenerateSummary} generating={generating} />
             )}
           </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Email Activity</h2>
+          {loadingEmailHistory ? (
+            <p className="text-sm text-slate-500">Loading email activity...</p>
+          ) : emailHistory.length === 0 ? (
+            <p className="text-sm text-slate-500">No email activity recorded for this case.</p>
+          ) : (
+            <div className="space-y-3">
+              {emailHistory.map((entry) => (
+                <div key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-slate-800">{entry.status === EmailStatus.FAILED ? 'AI Summary email failed' : 'AI Summary sent'}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${emailStatusBadgeClass(entry.status)}`}>
+                      {entry.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">To: {entry.to_email}</p>
+                  {entry.sent_at && (
+                    <p className="mt-1 text-xs text-slate-500">Sent: {new Date(entry.sent_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                  )}
+                  {entry.error_message && (
+                    <p className="mt-1 text-xs text-red-600">{entry.error_message}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ─── Conversation History ─────────────────────────────────────── */}
@@ -580,6 +710,152 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
           </form>
         </section>
       </div>
+
+      {emailModalOpen && currentAnalysis && caseData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">Send AI Summary</h3>
+                  <p className="text-sm text-slate-500">Review and send the latest AI summary by email.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEmailModalOpen(false)}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="Close email dialog"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[80vh] overflow-y-auto p-5 sm:p-6">
+              <div className="grid gap-5 lg:grid-cols-[1.05fr_1.35fr]">
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">To</label>
+                    <input
+                      type="email"
+                      value={emailForm.to_email}
+                      onChange={(e) => setEmailForm((prev) => ({ ...prev, to_email: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="recipient@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">CC</label>
+                    <input
+                      type="text"
+                      value={emailForm.cc_emails}
+                      onChange={(e) => setEmailForm((prev) => ({ ...prev, cc_emails: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="optional@example.com, team@example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</label>
+                    <input
+                      type="text"
+                      value={emailForm.subject}
+                      onChange={(e) => setEmailForm((prev) => ({ ...prev, subject: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {emailSubmitError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {emailSubmitError}
+                    </div>
+                  )}
+
+                  {emailSubmitMessage && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                      {emailSubmitMessage}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                  <div className="mb-4 border-b border-slate-200 pb-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Email Preview</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200/70">
+                      <div className="border-b border-slate-100 pb-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">AI Conversation Intelligence</p>
+                        <h4 className="mt-2 text-xl font-semibold text-slate-900">AI Case Summary</h4>
+                      </div>
+
+                      <div className="mt-4 space-y-3 text-sm text-slate-700">
+                        <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
+                          <span className="text-slate-500">Case</span>
+                          <span className="font-medium text-slate-900">{caseData.case_number}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
+                          <span className="text-slate-500">Customer</span>
+                          <span className="font-medium text-slate-900">{customer?.name ?? 'Customer'}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
+                          <span className="text-slate-500">Category</span>
+                          <span>{caseData.category}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 border-b border-slate-100 pb-2">
+                          <span className="text-slate-500">Priority</span>
+                          <span>{caseData.priority}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 pb-2">
+                          <span className="text-slate-500">Status</span>
+                          <span>{caseData.status}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">AI Summary</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{currentAnalysis.summary}</p>
+                      </div>
+
+                      {currentAnalysis.recommended_action && (
+                        <div className="mt-5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recommended Action</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-700">{currentAnalysis.recommended_action}</p>
+                        </div>
+                      )}
+
+                      <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-center">
+                        <a href={`/cases/${caseData.id}`} className="text-sm font-medium text-blue-700">View Case</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+              <button
+                type="button"
+                onClick={() => setEmailModalOpen(false)}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendEmail}
+                disabled={emailSubmitting}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {emailSubmitting ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -1012,6 +1288,18 @@ function CheckCircleIcon({ className }: { className?: string }) {
       />
     </svg>
   );
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function emailStatusBadgeClass(status: string) {
+  switch (status) {
+    case EmailStatus.SENT: return 'bg-emerald-50 text-emerald-700';
+    case EmailStatus.FAILED: return 'bg-red-50 text-red-700';
+    default: return 'bg-slate-100 text-slate-600';
+  }
 }
 
 // ─── Badge helpers ──────────────────────────────────────────────────────────
