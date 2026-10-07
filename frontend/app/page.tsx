@@ -16,7 +16,7 @@ import {
   StatCard,
 } from '../components/dashboard';
 import type { DashboardSummaryItem } from '../components/dashboard';
-import { getCaseAnalyses, listCases, listCustomers } from '../services/api';
+import { getCase, getCustomer, listAIAnalyses, listCases, listCustomers } from '../services/api';
 import type { AIAnalysis } from '../types/ai-types';
 import type { Case } from '../types/case-types';
 import type { Customer } from '../types/customer-types';
@@ -39,6 +39,7 @@ export default function Home() {
   const [recentCases, setRecentCases] = useState<Case[]>([]);
   const [customers, setCustomers] = useState<Record<string, Customer>>({});
   const [summaryItems, setSummaryItems] = useState<DashboardSummaryItem[]>([]);
+  const [summaryCount, setSummaryCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +48,7 @@ export default function Home() {
     setError(null);
 
     try {
-      const [allRes, openRes, pendingRes, resolvedRes, highRes, criticalRes, recentRes, customerRes] =
+      const [allRes, openRes, pendingRes, resolvedRes, highRes, criticalRes, recentRes, customerRes, summaryRes] =
         await Promise.all([
           listCases({ page: 1, page_size: 100 }),
           listCases({ page: 1, page_size: 1, status: CaseStatus.OPEN }),
@@ -57,6 +58,7 @@ export default function Home() {
           listCases({ page: 1, page_size: 1, priority: CasePriority.CRITICAL }),
           listCases({ page: 1, page_size: RECENT_CASES_LIMIT }),
           listCustomers({ page: 1, page_size: 100 }),
+          listAIAnalyses({ page: 1, page_size: SUMMARY_CARD_LIMIT }),
         ]);
 
       const customerMap: Record<string, Customer> = {};
@@ -74,29 +76,28 @@ export default function Home() {
         criticalPriority: criticalRes.total,
       });
       setRecentCases(recentRes.items.slice(0, RECENT_CASES_LIMIT));
+      setSummaryCount(summaryRes.total);
 
-      const summaries: DashboardSummaryItem[] = [];
-      await Promise.all(
-        allRes.items.map(async (caseItem) => {
+      const casesById = new Map(allRes.items.map((caseItem) => [caseItem.id, caseItem]));
+      const summaries = await Promise.all(
+        summaryRes.items.map(async (analysis) => {
           try {
-            const analysisRes = await getCaseAnalyses(caseItem.id, { page: 1, page_size: 1 });
-            if (analysisRes.items.length === 0) return;
+            const caseItem = casesById.get(analysis.case_id) ?? await getCase(analysis.case_id);
+            const customerName = customerMap[caseItem.customer_id]?.name
+              ?? (await getCustomer(caseItem.customer_id)).name;
 
-            summaries.push({
-              analysis: analysisRes.items[0],
+            return {
+              analysis,
               caseData: caseItem,
-              customerName: customerMap[caseItem.customer_id]?.name ?? caseItem.customer_id,
-            });
+              customerName,
+            };
           } catch {
-            // Ignore per-case failures and treat the case as having no analysis.
+            return null;
           }
         }),
       );
 
-      summaries.sort(
-        (a, b) => new Date(b.analysis.created_at).getTime() - new Date(a.analysis.created_at).getTime(),
-      );
-      setSummaryItems(summaries.slice(0, SUMMARY_CARD_LIMIT));
+      setSummaryItems(summaries.filter((item): item is DashboardSummaryItem => item !== null));
     } catch {
       setError('Unable to load dashboard data. Please check the connection and try again.');
     } finally {
@@ -181,7 +182,7 @@ export default function Home() {
                 />
                 <StatCard
                   label="AI Summaries"
-                  value={summaryItems.length}
+                  value={summaryCount}
                   icon={<SparklesIcon className="h-5 w-5" />}
                   accentClass="bg-violet-50 text-violet-600"
                 />

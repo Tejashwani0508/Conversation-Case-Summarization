@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -8,6 +9,7 @@ from app.models.case import CustomerCase
 from app.models.conversation import Conversation
 from app.models.customer import Customer
 from app.models.enums import AIAnalysisRunStatus, CaseCategory, CasePriority, CaseStatus, ConversationChannel, SenderType
+from app.models.enums import Sentiment
 from app.services.ai_provider import OPENROUTER_BASE_URL, OpenRouterProvider
 
 
@@ -40,6 +42,37 @@ def _create_case(db_session, customer_id):
     db_session.commit()
     db_session.refresh(case)
     return case
+
+
+def test_list_ai_analyses_reports_total_and_orders_globally(client, clean_tables, db_session):
+    customer = _create_customer(db_session)
+    case = _create_case(db_session, customer.id)
+    created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    analyses = [
+        AIAnalysis(
+            case_id=case.id,
+            summary=f"Summary {index}",
+            issue="Issue",
+            category=CaseCategory.ACCOUNT_UPDATE,
+            sentiment=Sentiment.NEUTRAL,
+            ai_priority=CasePriority.MEDIUM,
+            key_details=[],
+            actions_taken=[],
+            pending_actions=[],
+            created_at=created_at + timedelta(minutes=index),
+        )
+        for index in range(5)
+    ]
+    db_session.add_all(analyses)
+    db_session.commit()
+
+    response = client.get("/api/ai-analysis?page=1&page_size=3")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 5
+    assert body["total_pages"] == 2
+    assert [item["summary"] for item in body["items"]] == ["Summary 4", "Summary 3", "Summary 2"]
 
 
 def test_summarize_case_without_openrouter_key_returns_502_and_failed_run(

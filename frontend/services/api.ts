@@ -158,6 +158,14 @@ export async function getAIAnalysis(analysisId: string): Promise<AIAnalysis> {
   return request<AIAnalysis>(`/api/ai-analysis/${analysisId}`);
 }
 
+export async function listAIAnalyses(params: { page?: number; page_size?: number } = {}): Promise<AIAnalysisListResponse> {
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.page_size !== undefined) query.set('page_size', String(params.page_size));
+  const qs = query.toString();
+  return request<AIAnalysisListResponse>(`/api/ai-analysis${qs ? `?${qs}` : ''}`);
+}
+
 export async function getAIAnalysisRuns(caseId: string, params: { page?: number; page_size?: number } = {}): Promise<AIRunListResponse> {
   const query = new URLSearchParams();
   if (params.page !== undefined) query.set('page', String(params.page));

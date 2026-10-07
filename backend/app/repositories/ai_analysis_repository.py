@@ -76,6 +76,24 @@ class AIAnalysisRepository:
         )
         return self.db.scalar(stmt) or 0
 
+    def list_all(
+        self,
+        *,
+        page: int,
+        page_size: int,
+    ) -> tuple[list[AIAnalysis], int]:
+        """Return a globally ordered page of analyses and the full count."""
+        base_stmt = select(AIAnalysis)
+        total = self.db.scalar(
+            select(func.count()).select_from(AIAnalysis)
+        ) or 0
+        stmt = (
+            base_stmt.order_by(AIAnalysis.created_at.desc(), AIAnalysis.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        return list(self.db.scalars(stmt).all()), total
+
     def list_runs_by_case(
         self,
         *,

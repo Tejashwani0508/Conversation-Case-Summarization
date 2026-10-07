@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   getCase,
   getCustomer,
+  updateCase,
   getConversationHistory,
   createConversation,
   generateCaseSummary,
@@ -48,6 +49,11 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
   const [loadingCustomer, setLoadingCustomer] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [caseError, setCaseError] = useState<string | null>(null);
+  const [editingCaseField, setEditingCaseField] = useState<'status' | 'priority' | null>(null);
+  const [statusDraft, setStatusDraft] = useState<CaseStatus>(CaseStatus.OPEN);
+  const [priorityDraft, setPriorityDraft] = useState<CasePriority>(CasePriority.MEDIUM);
+  const [savingCaseField, setSavingCaseField] = useState(false);
+  const [caseUpdateError, setCaseUpdateError] = useState<string | null>(null);
   const [conversationError, setConversationError] = useState<string | null>(null);
 
   // AI Analysis
@@ -300,6 +306,37 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
     }
   };
 
+  const startCaseFieldEdit = (field: 'status' | 'priority') => {
+    if (!caseData) return;
+    setCaseUpdateError(null);
+    setEditingCaseField(field);
+    if (field === 'status') setStatusDraft(caseData.status);
+    else setPriorityDraft(caseData.priority);
+  };
+
+  const cancelCaseFieldEdit = () => {
+    if (savingCaseField) return;
+    setEditingCaseField(null);
+    setCaseUpdateError(null);
+  };
+
+  const saveCaseField = async () => {
+    if (!caseData || !editingCaseField || savingCaseField) return;
+    setSavingCaseField(true);
+    setCaseUpdateError(null);
+    try {
+      const updatedCase = editingCaseField === 'status'
+        ? await updateCase(caseId, { status: statusDraft })
+        : await updateCase(caseId, { priority: priorityDraft });
+      setCaseData(updatedCase);
+      setEditingCaseField(null);
+    } catch (err) {
+      setCaseUpdateError(err instanceof ApiError ? err.message : 'Unable to update the case. Please try again.');
+    } finally {
+      setSavingCaseField(false);
+    }
+  };
+
   const formatDateTime = (iso: string) =>
     new Date(iso).toLocaleString(undefined, {
       dateStyle: 'medium',
@@ -393,16 +430,68 @@ export default function CaseDetailsPage({ params }: { params: { caseId: string }
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{caseData.subject}</h1>
               <p className="mt-1 font-mono text-sm font-medium text-blue-600">{caseData.case_number}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(caseData.status)}`}>
-                {caseData.status}
-              </span>
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${priorityBadgeClass(caseData.priority)}`}>
-                {caseData.priority} priority
-              </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                {editingCaseField === 'status' ? (
+                  <>
+                    <select
+                      aria-label="Case status"
+                      value={statusDraft}
+                      onChange={(event) => setStatusDraft(event.target.value as CaseStatus)}
+                      disabled={savingCaseField}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {Object.values(CaseStatus).map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                    <button onClick={() => void saveCaseField()} disabled={savingCaseField} className="text-xs font-medium text-blue-700 hover:text-blue-800 disabled:opacity-50">
+                      {savingCaseField ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={cancelCaseFieldEdit} disabled={savingCaseField} className="text-xs font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusBadgeClass(caseData.status)}`}>
+                      {caseData.status}
+                    </span>
+                    <button onClick={() => startCaseFieldEdit('status')} className="text-xs font-medium text-blue-700 hover:text-blue-800">Edit status</button>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {editingCaseField === 'priority' ? (
+                  <>
+                    <select
+                      aria-label="Case priority"
+                      value={priorityDraft}
+                      onChange={(event) => setPriorityDraft(event.target.value as CasePriority)}
+                      disabled={savingCaseField}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {Object.values(CasePriority).map((value) => <option key={value} value={value}>{value}</option>)}
+                    </select>
+                    <button onClick={() => void saveCaseField()} disabled={savingCaseField} className="text-xs font-medium text-blue-700 hover:text-blue-800 disabled:opacity-50">
+                      {savingCaseField ? 'Saving...' : 'Save'}
+                    </button>
+                    <button onClick={cancelCaseFieldEdit} disabled={savingCaseField} className="text-xs font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${priorityBadgeClass(caseData.priority)}`}>
+                      {caseData.priority} priority
+                    </span>
+                    <button onClick={() => startCaseFieldEdit('priority')} className="text-xs font-medium text-blue-700 hover:text-blue-800">Edit priority</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </header>
+
+        {caseUpdateError && (
+          <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {caseUpdateError}
+          </div>
+        )}
 
         {caseError && (
           <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">

@@ -12,7 +12,7 @@ import {
   SparklesIcon,
   statusBadge,
 } from '../../components/dashboard';
-import { getCaseAnalyses, listCases, listCustomers, type ApiError } from '../../services/api';
+import { listAIAnalyses, listCases, listCustomers, type ApiError } from '../../services/api';
 import type { AIAnalysis } from '../../types/ai-types';
 import type { Case } from '../../types/case-types';
 import type { Customer } from '../../types/customer-types';
@@ -20,6 +20,16 @@ import { CaseStatus } from '../../types/enums';
 
 const PAGE_SIZE = 10;
 const STATUS_OPTIONS = ['', ...Object.values(CaseStatus)];
+
+async function fetchAllPages<T>(
+  fetchPage: (page: number) => Promise<{ items: T[]; total_pages: number }>,
+): Promise<T[]> {
+  const firstPage = await fetchPage(1);
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, firstPage.total_pages - 1) }, (_, index) => fetchPage(index + 2)),
+  );
+  return firstPage.items.concat(...remainingPages.map((result) => result.items));
+}
 
 type SummaryEntry = {
   caseData: Case;
@@ -43,35 +53,28 @@ export default function AISummariesPage() {
     setError(null);
 
     try {
-      const [caseRes, customerRes] = await Promise.all([
-        listCases({ page: 1, page_size: 100 }),
-        listCustomers({ page: 1, page_size: 100 }),
+      const [analyses, cases, customers] = await Promise.all([
+        fetchAllPages((page) => listAIAnalyses({ page, page_size: 100 })),
+        fetchAllPages((page) => listCases({ page, page_size: 100 })),
+        fetchAllPages((page) => listCustomers({ page, page_size: 100 })),
       ]);
 
       const map: Record<string, Customer> = {};
-      for (const customer of customerRes.items) {
+      for (const customer of customers) {
         map[customer.id] = customer;
       }
       setCustomers(map);
 
-      const allEntries: SummaryEntry[] = [];
-
-      await Promise.all(
-        caseRes.items.map(async (caseItem) => {
-          try {
-            const analysisRes = await getCaseAnalyses(caseItem.id, { page: 1, page_size: 20 });
-            for (const analysis of analysisRes.items) {
-              allEntries.push({
-                caseData: caseItem,
-                customerName: map[caseItem.customer_id]?.name ?? caseItem.customer_id,
-                analysis,
-              });
-            }
-          } catch {
-            // Per-case analysis failures are non-fatal for the summaries overview.
-          }
-        }),
-      );
+      const casesById = new Map(cases.map((caseItem) => [caseItem.id, caseItem]));
+      const allEntries: SummaryEntry[] = analyses.flatMap((analysis) => {
+        const caseItem = casesById.get(analysis.case_id);
+        if (!caseItem) return [];
+        return [{
+          caseData: caseItem,
+          customerName: map[caseItem.customer_id]?.name ?? caseItem.customer_id,
+          analysis,
+        }];
+      });
 
       setEntries(
         allEntries.sort((a, b) => new Date(b.analysis.created_at).getTime() - new Date(a.analysis.created_at).getTime()),

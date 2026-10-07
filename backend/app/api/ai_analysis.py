@@ -25,6 +25,34 @@ def get_summarization_service(db: Session = Depends(get_db)) -> SummarizationSer
     return SummarizationService(db)
 
 
+@router.get(
+    "/api/ai-analysis",
+    response_model=AIAnalysisListResponse,
+    summary="List AI analyses",
+    description="Return all generated AI analyses with pagination and the total count.",
+)
+def list_ai_analyses(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(
+        DEFAULT_PAGE_SIZE,
+        ge=1,
+        le=MAX_PAGE_SIZE,
+        description="Number of items per page (max 100)",
+    ),
+    db: Session = Depends(get_db),
+) -> AIAnalysisListResponse:
+    repo = AIAnalysisRepository(db)
+    items, total = repo.list_all(page=page, page_size=page_size)
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    return AIAnalysisListResponse(
+        items=[AIAnalysisResponse.model_validate(item) for item in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
 @router.post(
     "/api/cases/{case_id}/summarize",
     response_model=AIAnalysisResponse,
